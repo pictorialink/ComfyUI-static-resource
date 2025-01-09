@@ -28,8 +28,15 @@ class StaticResource():
         full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix, self.output_dir, 0, 0)
         file = f"{filename}_{counter:05}_.zip"
         local_file_path = os.path.join(full_output_folder, file)
+        print("Downloading to", local_file_path)
         download_file(resource_url, local_file_path)
-        return {}
+        results = list()
+        results.append({
+            "filename": file,
+            "subfolder": subfolder,
+            "type": self.type
+        })
+        return { "ui": { "images": results } }
     
     
 def download_file(url, local_filename):
