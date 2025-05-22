@@ -45,12 +45,12 @@ class StaticResource():
         file = f"{filename}_{counter:05}_.json"
         local_file_path = os.path.join(full_output_folder, file)
         data = {
-            "doodle_material": "https://github.com/solution9th/pictorial-static-doodle/archive/refs/heads/main.zip",
-            "poses": "https://github.com/solution9th/pictorial-static-poses/archive/refs/heads/main.zip",
-            "layer_material": "https://github.com/solution9th/pictorial-static-layer/archive/refs/heads/main.zip",
-            "style": "https://github.com/solution9th/pictorial-static-style/archive/refs/heads/main.zip",
-            "fonts": "https://github.com/solution9th/pictorial-static-fonts/archive/refs/heads/main.zip",
-            "faces": "https://github.com/solution9th/pictorial-static-faces/archive/refs/heads/main.zip"
+            "doodle_material": "https://github.com/pictorialink/pictorial-static-doodle/archive/refs/heads/main.zip",
+            "poses": "https://github.com/pictorialink/pictorial-static-poses/archive/refs/heads/main.zip",
+            "layer_material": "https://github.com/pictorialink/pictorial-static-layer/archive/refs/heads/main.zip",
+            "style": "https://github.com/pictorialink/pictorial-static-style/archive/refs/heads/main.zip",
+            "fonts": "https://github.com/pictorialink/pictorial-static-fonts/archive/refs/heads/main.zip",
+            "faces": "https://github.com/pictorialink/pictorial-static-faces/archive/refs/heads/main.zip"
         } 
         write_to_file(data, local_file_path)
         results = list()
