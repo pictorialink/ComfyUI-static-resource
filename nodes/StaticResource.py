@@ -45,14 +45,23 @@ class StaticResource():
         file = f"{filename}_{counter:05}_.json"
         local_file_path = os.path.join(full_output_folder, file)
         data = {
-            "doodle_material": "https://github.com/pictorialink/pictorial-static-doodle/archive/refs/heads/main.zip",
-            "poses": "https://github.com/pictorialink/pictorial-static-poses/archive/refs/heads/main.zip",
-            "layer_material": "https://github.com/pictorialink/pictorial-static-layer/archive/refs/heads/main.zip",
-            "style": "https://github.com/pictorialink/pictorial-static-style/archive/refs/heads/main.zip",
-            "fonts": "https://github.com/pictorialink/pictorial-static-fonts/archive/refs/heads/main.zip",
-            "faces": "https://github.com/pictorialink/pictorial-static-faces/archive/refs/heads/main.zip"
+            "doodle_material": "pictorial-static-doodle",
+            "poses": "pictorial-static-poses",
+            "layer_material": "pictorial-static-layer",
+            "style": "pictorial-static-style",
+            "fonts": "pictorial-static-fonts",
+            "faces": "pictorial-static-faces"
         } 
+        for key, value in data.items():
+            zip_url,zip_size,tag_name = get_latest_release("pictorialink", value)
+           
+            data[key] = {
+                "tag_name": tag_name,
+                "zip_url": zip_url,
+                "size": zip_size,
+            }
         write_to_file(data, local_file_path)
+        print("Downloading to", local_file_path)
         results = list()
         results.append({
             "filename": file,
@@ -64,7 +73,7 @@ class StaticResource():
     
 def write_to_file(content, local_filename):
     with open(local_filename, "w", encoding="utf-8") as file:
-        json.dump(content, file)  # indent 参数用于美化输出，缩进 4 个空格
+        json.dump(content, file)
 
 def download_file(url, local_filename):
     with requests.get(url, stream=True) as r:
@@ -73,3 +82,29 @@ def download_file(url, local_filename):
             for chunk in r.iter_content(chunk_size=1024 * 1024):
                 f.write(chunk)
     return local_filename
+
+
+def get_latest_release(repo_owner, repo_name):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+    
+    try:
+        response = requests.get(url)
+        if response.status_code == 404:
+            print(f"Release not found for {repo_owner}/{repo_name}, trying tags...")
+            return ""
+            
+        response.raise_for_status()
+        release = response.json()
+        print("resporeleasense", release)
+
+        tag_name = release['tag_name']
+        # tag_url = release['html_url']
+        size = release['body']
+        size = size.strip()
+        zip_url = f"https://github.com/{repo_owner}/{repo_name}/archive/refs/tags/{tag_name}.zip"
+        print(f"Latest release for {repo_name}: {tag_name} ({zip_url})")
+        return zip_url,size,tag_name
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching release: {e}")
+        return None, None, None
