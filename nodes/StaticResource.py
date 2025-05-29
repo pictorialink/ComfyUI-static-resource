@@ -1,7 +1,9 @@
 import json
+import time
 import folder_paths
 import requests
 import os
+from ..services.cache import load_cache, save_cache
 
 class StaticResource():
     @classmethod
@@ -44,22 +46,32 @@ class StaticResource():
         full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix, self.output_dir, 0, 0)
         file = f"{filename}_{counter:05}_.json"
         local_file_path = os.path.join(full_output_folder, file)
-        data = {
-            "doodle_material": "pictorial-static-doodle",
-            "poses": "pictorial-static-poses",
-            "layer_material": "pictorial-static-layer",
-            "style": "pictorial-static-style",
-            "fonts": "pictorial-static-fonts",
-            "faces": "pictorial-static-faces"
-        } 
-        for key, value in data.items():
-            zip_url,zip_size,tag_name = get_latest_release("pictorialink", value)
-           
-            data[key] = {
-                "tag_name": tag_name,
-                "zip_url": zip_url,
-                "size": zip_size,
-            }
+        cache_info = load_cache()
+        print("cache_info", cache_info)
+        if cache_info and "static_resource" in cache_info and "create_time" in cache_info:
+            create_time = cache_info["create_time"]
+            current_time = time.time()
+            time_diff = current_time - create_time
+            
+            if time_diff < 3600 and "static_resource" in cache_info:
+                print("Using cached data")
+                write_to_file(cache_info["static_resource"], local_file_path)
+                results = list()
+                results.append({
+                    "filename": file,
+                    "subfolder": subfolder,
+                    "type": self.type
+                })
+                return { "ui": { "images": results } }
+            else:
+                print("Cache expired, fetching new data")
+                data = get_latest_release() 
+        else:
+            data = get_latest_release()
+
+        cache_info["static_resource"] = data
+        cache_info["create_time"] = time.time()  # 更新缓存创建时间
+        save_cache(cache_info)
         write_to_file(data, local_file_path)
         print("Downloading to", local_file_path)
         results = list()
@@ -84,27 +96,40 @@ def download_file(url, local_filename):
     return local_filename
 
 
-def get_latest_release(repo_owner, repo_name):
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
-    
+def get_latest_release():
+    repo_owner = "pictorialink"
+    data = {
+        "doodle_material": "pictorial-static-doodle",
+        "poses": "pictorial-static-poses",
+        "layer_material": "pictorial-static-layer",
+        "style": "pictorial-static-style",
+        "fonts": "pictorial-static-fonts",
+        "faces": "pictorial-static-faces"
+    } 
     try:
-        response = requests.get(url)
-        if response.status_code == 404:
-            print(f"Release not found for {repo_owner}/{repo_name}, trying tags...")
-            return ""
-            
-        response.raise_for_status()
-        release = response.json()
-        print("resporeleasense", release)
+        for key, value in data.items():
+            url = f"https://api.github.com/repos/{repo_owner}/{value}/releases/latest"
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"Failed to fetch release for {repo_owner}/{value}, status code: {response.status_code}")
+                raise ValueError("github api error, please check your network connection or the repository name")
+                
+            response.raise_for_status()
+            release = response.json()
+            print("resporeleasense", release)
+            tag_name = release['tag_name']
+            # tag_url = release['html_url']
+            size = release['body'].strip()
+            zip_url = f"https://github.com/{repo_owner}/{value}/archive/refs/tags/{tag_name}.zip"
+            print(f"Latest release for {value}: {tag_name} ({zip_url})")
+            data[key] = {
+                "tag_name": tag_name,
+                "zip_url": zip_url,
+                "size": size,
+            }
 
-        tag_name = release['tag_name']
-        # tag_url = release['html_url']
-        size = release['body']
-        size = size.strip()
-        zip_url = f"https://github.com/{repo_owner}/{repo_name}/archive/refs/tags/{tag_name}.zip"
-        print(f"Latest release for {repo_name}: {tag_name} ({zip_url})")
-        return zip_url,size,tag_name
+        return data
         
     except requests.exceptions.RequestException as e:
         print(f"Error fetching release: {e}")
-        return None, None, None
+        raise ValueError("github api error, please check your network connection or the repository name") from e
